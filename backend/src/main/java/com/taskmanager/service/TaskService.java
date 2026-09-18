@@ -7,6 +7,8 @@ import com.taskmanager.entity.TaskStatus;
 import com.taskmanager.entity.User;
 import com.taskmanager.exception.ApiException;
 import com.taskmanager.repository.TaskRepository;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,8 @@ import java.util.List;
 @Service
 public class TaskService {
 
+    private static final Sort RECENT_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
+
     private final TaskRepository taskRepository;
 
     public TaskService(TaskRepository taskRepository) {
@@ -23,8 +27,25 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskResponse> getTasks(User user) {
-        return taskRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+    public List<TaskResponse> getTasks(User user, TaskStatus status, String search) {
+        // J'ai commencé avec un @Query et des paramètres nullables, c'était vite illisible
+        // dès qu'on combine statut + recherche. Les Specifications ajoutent juste les
+        // prédicats demandés.
+        Specification<Task> spec = ownedBy(user);
+
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.trim().toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("title")), pattern),
+                    cb.like(cb.lower(root.get("description")), pattern)
+            ));
+        }
+
+        return taskRepository.findAll(spec, RECENT_FIRST)
                 .stream()
                 .map(TaskResponse::from)
                 .toList();
@@ -55,6 +76,10 @@ public class TaskService {
     @Transactional
     public void deleteTask(User user, Long taskId) {
         taskRepository.delete(findOwnedTask(user, taskId));
+    }
+
+    private Specification<Task> ownedBy(User user) {
+        return (root, query, cb) -> cb.equal(root.get("user").get("id"), user.getId());
     }
 
     /** 404 et pas 403 si la tâche appartient à quelqu'un d'autre : inutile de confirmer qu'elle existe. */

@@ -2,6 +2,7 @@ package com.taskmanager.controller;
 
 import com.taskmanager.dto.TaskDtos.TaskRequest;
 import com.taskmanager.dto.TaskDtos.TaskResponse;
+import com.taskmanager.entity.TaskStatus;
 import com.taskmanager.entity.User;
 import com.taskmanager.service.TaskService;
 import jakarta.validation.Valid;
@@ -25,8 +26,10 @@ public class TaskController {
     // le User vient du SecurityContext (cf. JwtAuthenticationFilter), jamais du body :
     // sinon n'importe qui pourrait lire les tâches d'un autre en changeant un id
     @GetMapping
-    public ResponseEntity<List<TaskResponse>> getTasks(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(taskService.getTasks(user));
+    public ResponseEntity<List<TaskResponse>> getTasks(@AuthenticationPrincipal User user,
+                                                       @RequestParam(required = false) TaskStatus status,
+                                                       @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(taskService.getTasks(user, status, search));
     }
 
     @PostMapping
