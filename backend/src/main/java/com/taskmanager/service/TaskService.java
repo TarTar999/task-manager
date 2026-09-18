@@ -41,7 +41,8 @@ public class TaskService {
             String pattern = "%" + search.trim().toLowerCase() + "%";
             spec = spec.and((root, query, cb) -> cb.or(
                     cb.like(cb.lower(root.get("title")), pattern),
-                    cb.like(cb.lower(root.get("description")), pattern)
+                    // coalesce sinon les tâches sans description ne matchent jamais
+                    cb.like(cb.lower(cb.coalesce(root.get("description"), "")), pattern)
             ));
         }
 
