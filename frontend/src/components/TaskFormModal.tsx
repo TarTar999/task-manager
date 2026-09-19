@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { Task, TaskStatus } from '../types';
 import { STATUS_LABELS } from '../types';
 import type { TaskPayload } from '../api/tasks';
@@ -14,6 +14,15 @@ export default function TaskFormModal({ task, onClose, onSubmit }: TaskFormModal
   const [description, setDescription] = useState(task?.description ?? '');
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'TODO');
   const [submitting, setSubmitting] = useState(false);
+
+  // fermeture au clavier, sinon on est coincé à la souris
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
