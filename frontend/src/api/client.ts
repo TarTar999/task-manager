@@ -22,8 +22,8 @@ export const tokenStorage = {
   setUser: (user: unknown) => localStorage.setItem(USER_KEY, JSON.stringify(user)),
 };
 
-// Tous les appels passent par ici : token ajouté et erreurs API transformées en
-// Error avec le message du back.
+// Tous les appels passent par ici : token ajouté, erreurs API transformées en
+// Error avec le message du back, et déconnexion si le token n'est plus bon.
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -41,6 +41,13 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   } catch {
     // fetch ne rejette que sur erreur réseau, pas sur un 4xx/5xx
     throw new Error('Impossible de contacter le serveur. Vérifiez votre connexion.');
+  }
+
+  // on exclut /api/auth sinon un mauvais mot de passe déclencherait une redirection
+  if (response.status === 401 && !path.startsWith('/api/auth')) {
+    tokenStorage.clear();
+    window.location.href = '/login';
+    throw new Error('Session expirée, veuillez vous reconnecter.');
   }
 
   if (!response.ok) {
